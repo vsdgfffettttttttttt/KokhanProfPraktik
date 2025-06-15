@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8" />
+    <title>Style Transfer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            scroll-behavior: smooth;
+        }
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        #home::before,
+        #instructions::before,
+        #gallery::before {
+            content: "";
+            display: block;
+            height: 80px;       /* Висота навбару */
+            margin-top: -80px;  /* Від’ємний відступ */
+            visibility: hidden;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            height: 100%;
+            width: 100%;
+        }
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-100 to-white text-gray-800 font-sans min-h-screen">
+
+<!-- Навбар -->
+<nav class="bg-white shadow-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+        <div class="text-2xl font-bold text-indigo-600">StyleFusion</div>
+        <div class="space-x-6 text-gray-700 font-medium text-sm md:text-base">
+            <a href="#home" class="hover:text-indigo-600 transition">Головна</a>
+            <a href="#about" class="hover:text-indigo-600 transition">Про проєкт</a>
+            <a href="#instructions" class="hover:text-indigo-600 transition">Інструкція</a>
+            <a href="#gallery" class="hover:text-indigo-600 transition">Вітрина зображень</a>
+            <a href="#author" class="hover:text-indigo-600 transition">Автор</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Заголовок -->
+<section id="home" class="pt-36 pb-16 text-center fade-in max-w-4xl mx-auto px-6">
+    <h1 class="text-6xl font-extrabold text-indigo-700 mb-6 leading-tight">Зміни стиль свого фото за секунди</h1>
+    <p class="text-xl text-gray-700 max-w-3xl mx-auto">Наш сервіс використовує штучний інтелект для перенесення стилю між зображеннями. Просто завантаж свої фото і отримай неймовірний результат!</p>
+</section>
+
+<!-- Великий контейнер для всього іншого -->
+<section id="content" class="max-w-7xl mx-auto bg-white rounded-3xl shadow-2xl p-12 fade-in space-y-20 mb-32 px-6">
+
+    <form id="uploadForm" method="POST" action="/stylize" enctype="multipart/form-data" class="space-y-10 max-w-5xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <!-- Контент-зображення -->
+            <div class="flex flex-col space-y-4">
+                <div class="text-sm text-gray-600 font-medium text-center">Основне зображення (контент)</div>
+                <label class="w-full h-[300px] border-4 border-dashed border-indigo-300 rounded-3xl flex items-center justify-center cursor-pointer hover:border-indigo-500 transition-colors relative text-indigo-600 select-none overflow-hidden">
+                    <img id="previewContent" src="static/gallery/170289.png" alt="Завантажити фото"
+                         class="w-20 h-20 pointer-events-none object-contain transition-all duration-300" />
+                    <input type="file" name="content" accept="image/*" required
+                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                           onchange="showPreview(event, 'previewContent')" />
+                </label>
+            </div>
+
+            <!-- Зображення стилю -->
+            <div class="flex flex-col space-y-4">
+                <div class="text-sm text-gray-600 font-medium text-center">Зображення стилю (референс)</div>
+                <label class="w-full h-[300px] border-4 border-dashed border-indigo-300 rounded-3xl flex items-center justify-center cursor-pointer hover:border-indigo-500 transition-colors relative text-indigo-600 select-none overflow-hidden">
+                    <img id="previewStyle" src="static/gallery/170289.png" alt="Завантажити стиль"
+                         class="w-20 h-20 pointer-events-none object-contain transition-all duration-300" />
+                    <input type="file" name="style" accept="image/*" required
+                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                           onchange="showPreview(event, 'previewStyle')" />
+                </label>
+            </div>
+        </div>
+
+        <!-- Налаштування параметрів -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+                <label for="alpha" class="block text-sm font-medium mb-2 text-gray-700">Alpha (інтенсивність стилю):</label>
+                <input id="alpha" name="alpha" type="number" min="0" max="1" step="0.01" value="1.0"
+                       class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
+                <label for="brightness" class="block text-sm font-medium mb-2 text-gray-700">Яскравість:</label>
+                <input id="brightness" name="brightness" type="number" min="0" max="2" step="0.01" value="1.0"
+                       class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
+                <label for="contrast" class="block text-sm font-medium mb-2 text-gray-700">Контраст:</label>
+                <input id="contrast" name="contrast" type="number" min="0" max="2" step="0.01" value="1.0"
+                       class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
+                <label for="saturation" class="block text-sm font-medium mb-2 text-gray-700">Насиченість:</label>
+                <input id="saturation" name="saturation" type="number" min="0" max="2" step="0.01" value="1.0"
+                       class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+        </div>
+
+        <!-- Кнопка -->
+        <div class="text-center">
+            <button type="submit"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg px-12 py-4 rounded-3xl shadow-lg transition duration-300">
+                Стилізувати
+            </button>
+        </div>
+    </form>
+
+
+    <!-- Результат -->
+    <div class="max-w-5xl mx-auto text-center">
+        <h2 class="text-3xl font-extrabold text-indigo-600 mb-6">Результат:</h2>
+        <div
+                class="p-6 border-8 border-indigo-200 rounded-3xl shadow-2xl bg-white inline-block max-w-full max-h-[600px]">
+            <img id="resultImage" class="max-w-full max-h-[600px] rounded-xl object-contain" alt="Результат буде тут" />
+            <div class="mt-6">
+                <a id="downloadLink"
+                   href="#"
+                   download="stylized_image.png"
+                   class="hidden inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3 rounded-full shadow-md transition">
+                    Завантажити результат
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Інструкція -->
+    <section id="instructions" class="max-w-4xl mx-auto bg-indigo-50 rounded-3xl p-10 shadow-lg fade-in mb-20">
+        <h2 class="text-3xl font-semibold text-indigo-700 mb-6 text-center">Як користуватися сайтом</h2>
+        <ol class="list-decimal list-inside space-y-4 text-gray-800 text-lg">
+            <li><strong>Завантажте своє фото:</strong> Клікніть на поле "Контент-зображення" та оберіть фото, яке хочете стилізувати.</li>
+            <li><strong>Завантажте фото стилю:</strong> Оберіть зображення, стиль якого хочете застосувати до свого фото.</li>
+            <li><strong>Налаштуйте параметри:</strong> За бажанням відрегулюйте інтенсивність стилю (Alpha), яскравість, контраст та насиченість для бажаного ефекту.</li>
+            <li><strong>Натисніть кнопку "Стилізувати":</strong> Дочекайтесь обробки — результат з’явиться у розділі "Результат".</li>
+            <li><strong>Збережіть результат:</strong> Клацніть правою кнопкою на зображенні результату і оберіть "Зберегти як..." для завантаження на свій пристрій.</li>
+        </ol>
+    </section>
+
+    <!-- Про проєкт -->
+    <section id="about" class="max-w-5xl mx-auto bg-indigo-100 rounded-3xl p-10 shadow-xl fade-in mt-20 mb-32">
+        <h2 class="text-3xl font-bold text-indigo-700 mb-6 text-center">Про проєкт</h2>
+        <p class="text-lg text-gray-800 leading-relaxed text-justify">
+            <strong>StyleFusion</strong> — це не просто вебсервіс для стилізації фото. Це віртуальна виставка, де
+            кожен користувач стає учасником художнього процесу. Завдяки нейромережі, ваші зображення перетворюються на
+            витвори мистецтва, які поєднують сучасні технології з класичними художніми стилями.
+        </p>
+        <p class="text-lg text-gray-800 leading-relaxed text-justify mt-4">
+            Галерея нижче демонструє приклади стилізацій і виступає як цифрова колекція — інтерактивна, динамічна та
+            унікальна. Проєкт ілюструє, як штучний інтелект може бути інструментом для креативного самовираження в
+            епоху цифрової культури.
+        </p>
+    </section>
+
+    <!-- Вітрина з прикладами -->
+    <section id="gallery" class="max-w-6xl mx-auto text-center">
+        <h2 class="text-3xl font-semibold mb-10 text-indigo-600">Приклади робіт</h2>
+        <div class="grid grid-cols-[auto_24px_auto_24px_auto] gap-x-6 gap-y-12 justify-center items-center">
+            <!-- Повторюємо 4 рази (рядки) -->
+            <!-- Кожен рядок: фото контент + "+" + фото стиль + "=" + результат -->
+
+            <!-- Рядок 1 -->
+            <div class="border-4 border-indigo-300 rounded-xl overflow-hidden aspect-square shadow-lg">
+                <img src="static/gallery/1.jpg" alt="Контент 1" class="object-cover w-full h-full" />
+            </div>
+            <div class="text-indigo-500 text-3xl font-bold select-none">+</div>
+            <div class="border-4 border-indigo-300 rounded-xl overflow-hidden aspect-square shadow-lg">
+                <img src="static/gallery/2.jpg" alt="Стиль 1" class="object-cover w-full h-full" />
+            </div>
+            <div class="text-indigo-500 text-3xl font-bold select-none">=</div>
+            <div class="border-4 border-indigo-600 rounded-xl overflow-hidden aspect-square shadow-xl bg-indigo-50">
+                <img src="static/gallery/3.jpg" alt="Результат 1" class="object-cover w-full h-full" />
+            </div>
+
+            <!-- Рядок 2 -->
+            <div class="border-4 border-indigo-300 rounded-xl overflow-hidden aspect-square shadow-lg">
+                <img src="static/gallery/4.jpg" alt="Контент 2" class="object-cover w-full h-full" />
+            </div>
+            <div class="text-indigo-500 text-3xl font-bold select-none">+</div>
+            <div class="border-4 border-indigo-300 rounded-xl overflow-hidden aspect-square shadow-lg">
+                <img src="static/gallery/6.jpg" alt="Стиль 2" class="object-cover w-full h-full" />
+            </div>
+            <div class="text-indigo-500 text-3xl font-bold select-none">=</div>
+            <div class="border-4 border-indigo-600 rounded-xl overflow-hidden aspect-square shadow-xl bg-indigo-50">
+                <img src="static/gallery/5.jpg" alt="Результат 2" class="object-cover w-full h-full" />
+            </div>
+
+            <!-- Рядок 3 -->
+            <div class="border-4 border-indigo-300 rounded-xl overflow-hidden aspect-square shadow-lg">
+                <img src="static/gallery/7.jpg" alt="Контент 3" class="object-cover w-full h-full" />
+            </div>
+            <div class="text-indigo-500 text-3xl font-bold select-none">+</div>
+            <div class="border-4 border-indigo-300 rounded-xl overflow-hidden aspect-square shadow-lg">
+                <img src="static/gallery/8.jpg" alt="Стиль 3" class="object-cover w-full h-full" />
+            </div>
+            <div class="text-indigo-500 text-3xl font-bold select-none">=</div>
+            <div class="border-4 border-indigo-600 rounded-xl overflow-hidden aspect-square shadow-xl bg-indigo-50">
+                <img src="static/gallery/9.jpg" alt="Результат 3" class="object-cover w-full h-full" />
+            </div>
+
+            <!-- Рядок 4 -->
+            <div class="border-4 border-indigo-300 rounded-xl overflow-hidden aspect-square shadow-lg">
+                <img src="static/gallery/10.jpg" alt="Контент 4" class="object-cover w-full h-full" />
+            </div>
+            <div class="text-indigo-500 text-3xl font-bold select-none">+</div>
+            <div class="border-4 border-indigo-300 rounded-xl overflow-hidden aspect-square shadow-lg">
+                <img src="static/gallery/11.jpg" alt="Стиль 4" class="object-cover w-full h-full" />
+            </div>
+            <div class="text-indigo-500 text-3xl font-bold select-none">=</div>
+            <div class="border-4 border-indigo-600 rounded-xl overflow-hidden aspect-square shadow-xl bg-indigo-50">
+                <img src="static/gallery/12.jpg" alt="Результат 4" class="object-cover w-full h-full" />
+            </div>
+        </div>
+    </section>
+
+    <!-- Запрошення до участі -->
+    <section class="max-w-4xl mx-auto mt-16 text-center text-lg text-gray-700 px-4">
+        <p>
+            Якщо результат вашої стилізації вас надихає — поділіться ним із нашим ком’юніті!<br class="hidden sm:inline" />
+            Ми будемо раді побачити ваші роботи у нашій галереї.
+        </p>
+        <p class="mt-4">
+            Надішліть, будь ласка, три зображення — <strong>контентне фото</strong>, <strong>стиль</strong> і <strong>ваш готовий результат</strong> — на нашу електронну адресу:<br>
+            <a href="mailto:219206@kisit.kneu.edu.ua" class="text-indigo-600 font-semibold underline hover:text-indigo-800 transition">219206@kisit.kneu.edu.ua</a>.
+        </p>
+        <p class="mt-4 italic text-sm text-gray-500">
+            Ми з нетерпінням чекаємо на ваші творчі експерименти і з радістю додамо їх до галереї на нашому сайті!
+        </p>
+    </section>
+</section>
+
+<footer id="author" class="bg-indigo-100 text-indigo-900 text-center py-12 mt-24 rounded-t-3xl shadow-inner max-w-7xl mx-auto px-8 select-none">
+    <h3 class="text-2xl font-extrabold mb-3 tracking-wide">Роботу виконав Кохан Олександр Олександрович</h3>
+    <p class="text-lg font-semibold max-w-md mx-auto leading-relaxed mb-1">
+        Студент 4 курсу, 491 групи<br />
+        Спеціальність 122
+    </p>
+    <p class="italic text-indigo-700 text-sm mt-2">Дякую за увагу!</p>
+</footer>
+
+
+<script>
+    const form = document.getElementById('uploadForm');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const res = await fetch('/stylize', {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) {
+            alert("Помилка при стилізації. Спробуйте ще раз.");
+            return;
+        }
+        const blob = await res.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        document.getElementById('resultImage').src = imageUrl;
+        document.getElementById('resultImage').alt = 'Зображення після стилізації';
+
+        // Показати кнопку завантаження
+        const downloadLink = document.getElementById('downloadLink');
+        downloadLink.href = imageUrl;
+        downloadLink.classList.remove('hidden');
+        document.getElementById('resultImage').alt = 'Зображення після стилізації';
+        document.getElementById('resultImage').scrollIntoView({behavior: 'smooth'});
+    });
+    function showPreview(event, previewId) {
+        const input = event.target;
+        const file = input.files[0];
+        const preview = document.getElementById(previewId);
+
+        if (file && file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                preview.src = e.target.result;
+                preview.classList.add("w-full", "h-full", "object-cover");
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+</script>
+
+</body>
+</html>
